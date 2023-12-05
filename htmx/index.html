@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://unpkg.com/htmx.org@1.9.9"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.1/Sortable.min.js"></script>
+  <script src="./index.js"></script>
+</head>
+<body>
+  
+  <!--hx-post="/items" hx-trigger="end" -->
+  <form class="sortable" >
+    <div class="htmx-indicator">Updating...</div>
+    <div><input type='hidden' name='item' value='1'/>Item 1</div>
+    <div><input type='hidden' name='item' value='2'/>Item 2</div>
+    <div><input type='hidden' name='item' value='3'/>Item 3</div>
+    <div><input type='hidden' name='item' value='4'/>Item 4</div>
+    <div><input type='hidden' name='item' value='5'/>Item 5</div>
+    <button hx-post="/click" hx-swap="none" value="5">
+      <p id="i1">Hello</p>
+    </button>
+  </form>
+</body>
+</html>
