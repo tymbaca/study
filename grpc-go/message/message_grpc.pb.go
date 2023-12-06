@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type HasherClient interface {
-	Hash(ctx context.Context, in *InputString, opts ...grpc.CallOption) (*ResultHash, error)
+	Hash(ctx context.Context, in *Input, opts ...grpc.CallOption) (*Output, error)
 }
 
 type hasherClient struct {
@@ -33,8 +33,8 @@ func NewHasherClient(cc grpc.ClientConnInterface) HasherClient {
 	return &hasherClient{cc}
 }
 
-func (c *hasherClient) Hash(ctx context.Context, in *InputString, opts ...grpc.CallOption) (*ResultHash, error) {
-	out := new(ResultHash)
+func (c *hasherClient) Hash(ctx context.Context, in *Input, opts ...grpc.CallOption) (*Output, error) {
+	out := new(Output)
 	err := c.cc.Invoke(ctx, "/main.Hasher/Hash", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (c *hasherClient) Hash(ctx context.Context, in *InputString, opts ...grpc.C
 // All implementations must embed UnimplementedHasherServer
 // for forward compatibility
 type HasherServer interface {
-	Hash(context.Context, *InputString) (*ResultHash, error)
+	Hash(context.Context, *Input) (*Output, error)
 	mustEmbedUnimplementedHasherServer()
 }
 
@@ -54,7 +54,7 @@ type HasherServer interface {
 type UnimplementedHasherServer struct {
 }
 
-func (UnimplementedHasherServer) Hash(context.Context, *InputString) (*ResultHash, error) {
+func (UnimplementedHasherServer) Hash(context.Context, *Input) (*Output, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Hash not implemented")
 }
 func (UnimplementedHasherServer) mustEmbedUnimplementedHasherServer() {}
@@ -71,7 +71,7 @@ func RegisterHasherServer(s grpc.ServiceRegistrar, srv HasherServer) {
 }
 
 func _Hasher_Hash_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InputString)
+	in := new(Input)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func _Hasher_Hash_Handler(srv interface{}, ctx context.Context, dec func(interfa
 		FullMethod: "/main.Hasher/Hash",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(HasherServer).Hash(ctx, req.(*InputString))
+		return srv.(HasherServer).Hash(ctx, req.(*Input))
 	}
 	return interceptor(ctx, in, info, handler)
 }

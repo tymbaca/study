@@ -4,14 +4,14 @@ package main;
 option go_package = "github.com/tymbaca/study/grpc-go/message";
 
 service Hasher {
-    rpc Hash(InputString) returns (ResultHash) {}
+    rpc Hash(Input) returns (Output) {}
 }
 
-message InputString {
-    string data = 1;
+message Input {
+    bytes data = 1;
 }
 
-message ResultHash {
-    string data = 1;
+message Output {
+    bytes data = 1;
 }
 
