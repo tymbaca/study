@@ -31,7 +31,7 @@ func (s *Server) Hash(ctx context.Context, in *pb.Input) (*pb.Output, error) {
 	}
 
 	sum := h.Sum(nil)
-	log.Printf("new hash: '%x'", sum)
+	log.Printf("new hash: '%X'", sum)
 	// log.Printf("new hash (as string): '%v', '%s'", string(sum), string(sum))
 	res := &pb.Output{Data: sum}
 	return res, nil
