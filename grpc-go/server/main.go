@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 
+	"github.com/tymbaca/study/grpc-go/hsh"
 	pb "github.com/tymbaca/study/grpc-go/message"
 	"google.golang.org/grpc"
 )
@@ -22,15 +22,7 @@ type Server struct {
 }
 
 func (s *Server) Hash(ctx context.Context, in *pb.Input) (*pb.Output, error) {
-	h := sha256.New()
-
-	// Write to hash. Never returns an error
-	_, err := h.Write(in.Data)
-	if err != nil {
-		return nil, fmt.Errorf("probably earth is broken: %w", err)
-	}
-
-	sum := h.Sum(nil)
+	sum, _ := hsh.Hash(in.Data)
 	log.Printf("new hash: '%X'", sum)
 	// log.Printf("new hash (as string): '%v', '%s'", string(sum), string(sum))
 	res := &pb.Output{Data: sum}
