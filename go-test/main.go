@@ -1,37 +1,32 @@
 package main
 
 import (
-	"log"
-	"net"
-	"strings"
+	"fmt"
 	"time"
 )
 
+type My struct {
+	S []byte
+}
+
 func main() {
-	conn, err := net.Dial("tcp", "localhost:8081")
-	if err != nil {
-		panic(err)
-	}
-	addr := conn.RemoteAddr()
-	log.Printf("Connected with: %s", addr.String())
-
-	buf := make([]byte, 1024)
+	// h := make([]byte, 40*1024*1024)
+	ptrs := make([]*My, 0)
+	c := 1
+	i := 0
 	for {
-		r, err := conn.Read(buf)
-		if err != nil {
-			panic(err)
+		s := make([]byte, 1024*1024)
+		m := &My{S: s}
+		ptrs = append(ptrs, m)
+		fmt.Printf("Added struct in ptrs, size: %d\n", len(ptrs))
+
+		if i%10 == 0 {
+			ptrs = make([]*My, 0)
+			fmt.Printf("Cleared ptrs (%d times)\n", c)
+			c++
 		}
 
-		log.Printf("Read %v bytes: %s", r, string(buf))
-		if strings.Contains(string(buf), "FUCK YOU") {
-			time.Sleep(1 * time.Second)
-			sendBuf := []byte("NO FUCK YOU SERVER")
-			w, err := conn.Write(sendBuf)
-			if err != nil {
-				panic(err)
-			}
-
-			log.Printf("Send %v bytes: %s", w, string(sendBuf))
-		}
+		time.Sleep(100 * time.Millisecond)
+		i++
 	}
 }
