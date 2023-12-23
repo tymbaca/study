@@ -32,6 +32,19 @@ func NewHashMap() *HashMap {
 	}
 }
 
+// n is bucket count
+func newHashMapN(n int) *HashMap {
+	bucks := make([]Bucket, n)
+
+	for i := range bucks {
+		bucks[i] = make(Bucket, 0, maxBucketLen)
+	}
+
+	return &HashMap{
+		buckets: bucks,
+	}
+}
+
 // TODO: any type
 func (h *HashMap) Set(key, val string) error {
 
@@ -41,7 +54,7 @@ func (h *HashMap) Set(key, val string) error {
 	err := h.set(key, val)
 	// if bucket is full -- increase the map size (more buckets) and try again
 	for errors.Is(err, ErrBucketIsFull) {
-		h.resize()
+		h.resizeAndEvac()
 		err = h.set(key, val)
 	}
 	return nil
@@ -74,9 +87,18 @@ func (h *HashMap) BucketCount() int {
 	return len(h.buckets)
 }
 
-func (h *HashMap) resize() {
-	// if 0 buckets - create 8 bucket
-	panic("unimplemented")
+func (h *HashMap) resizeAndEvac() {
+	evac(h)
+}
+
+func (h *HashMap) Items() []hashItem {
+	items := []hashItem{}
+	for _, buck := range h.buckets {
+		for _, item := range buck {
+			items = append(items, item)
+		}
+	}
+	return items
 }
 
 type Bucket []hashItem
@@ -114,4 +136,22 @@ func str(v any) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+// evac creates x4 more buckets and evacuates all items to that buckets (via Set() method)
+// Reassigns HashMap.buckets to new buckets slice
+func evac(old *HashMap) {
+	// if 0 buckets - create 8 bucket
+	prevCount := len(old.buckets)
+	newHashMap := newHashMapN(prevCount * 4)
+
+	items := old.Items()
+	for _, item := range items {
+		err := newHashMap.set(item.key, item.val)
+		if err != nil {
+			panic(err)
+		}
+	}
+	old.buckets = newHashMap.buckets
+	return
 }

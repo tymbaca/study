@@ -9,7 +9,7 @@ import (
 func Test_Set(t *testing.T) {
 	m := NewHashMap()
 	for i := 0; i < 1000; i++ {
-		key := fmt.Sprintf("%d", rand.Intn(60))
+		key := fmt.Sprintf("%d", rand.Intn(1000))
 		val := fmt.Sprintf("%d", rand.Intn(60))
 		m.Set(key, val)
 	}
