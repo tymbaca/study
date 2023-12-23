@@ -1,0 +1,75 @@
+package views
+
+import "strconv"
+
+templ Default() {
+	@Base() {
+		@Header()
+		@ProductsList() {
+			@ProductItem("Carrot", 15)
+			@ProductItem("Apple", 12)
+			@ProductItem("Pineapple", 18)
+		}
+	}
+}
+
+templ Base() {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="UTF-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<link rel="stylesheet" href="./styles.css"/>
+			<title>Document</title>
+		</head>
+		<body>
+			{ children... }
+		</body>
+	</html>
+}
+
+templ Header() {
+	<div class={ header() }>
+		@HeaderItem("Products")
+		@HeaderItem("Indexes")
+	</div>
+}
+
+templ HeaderItem(name string) {
+	<div class={ headerItem() }>
+		{ name }
+	</div>
+}
+
+templ ProductsList() {
+	<div class="products">
+		<ul>
+			{ children... }
+		</ul>
+	</div>
+}
+
+templ ProductItem(name string, price int) {
+	<div class={ headerItem() }>
+		Name: { name }, Price: { strconv.Itoa(price) }
+	</div>
+}
+
+css header() {
+	display: flex;
+	padding: 32px 34px;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 20px;
+	align-self: stretch;
+	background: #98D3DB;
+}
+
+css headerItem() {
+	color: #000;
+	font-family: Minecraft Rus;
+	font-size: 36px;
+	font-style: normal;
+	font-weight: 400;
+	line-height: normal;
+}

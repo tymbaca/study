@@ -1,22 +1,19 @@
 package main
 
 import (
-	"log"
-	"net/http"
+	"htmx-test/util"
+	"htmx-test/views"
+
+	"github.com/labstack/echo/v4"
 )
 
-func ClickHandler(w http.ResponseWriter, r *http.Request) {
-
-}
-
 func main() {
-	// counter := 0
+	e := echo.New()
 
-	http.Handle("/", http.FileServer(http.Dir(".")))
-	http.HandleFunc("/click", func(w http.ResponseWriter, r *http.Request) {
-		// w.Write([]byte(fmt.Sprint(counter)))
-		// counter++
-		log.Println(r.FormValue("item"))
+	e.GET("/:name", func(c echo.Context) error {
+		comp := views.Default()
+		return util.Render(c, comp)
 	})
-	http.ListenAndServe(":8080", nil)
+
+	e.Logger.Fatal(e.Start(":8080"))
 }
