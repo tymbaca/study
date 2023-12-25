@@ -1,47 +1,44 @@
 const std = @import("std");
 const eql = std.mem.eql;
 const print = std.debug.print;
+const log = std.log;
 const ArrayList = std.ArrayList;
 
 pub const HashSet = struct {
-    buckets: []Bucket,
+    buckets: Buckets,
     allocator: std.mem.Allocator = std.heap.page_allocator,
 
     pub fn init() !HashSet {
         var hs = HashSet{ .buckets = undefined };
 
-        hs.buckets = try hs.allocator.alloc(Bucket, 8);
-        for (hs.buckets, 0..) |_, index| {
-            hs.buckets[index] = try hs.allocator.alloc([]u8, 4);
+        hs.buckets = Buckets.init(hs.allocator);
+        for (0..4) |_| {
+            log.debug("Created bucket", .{});
+            var buck = Bucket.init(hs.allocator);
+            try hs.buckets.append(buck);
         }
 
-        return HashSet{ .buckets = undefined };
+        return hs;
     }
 
-    pub fn add(self: *HashSet, val: []const u8) !void {
+    pub fn add(self: *HashSet, val: String) !void {
         var h = hash(val);
-        var bucket_index = h % self.buckets.len;
-        var bucket = self.buckets[bucket_index];
+        var bucket_index = h % self.buckets.items.len;
+        var bucket = self.buckets.items[bucket_index];
 
-        for (bucket) |item| {
-            if (eql([]const u8, item, val)) {
-                return .{ .err = Error.AlreadyAdded };
-            }
-        }
-
-        for (bucket, 0..) |item, index| {
-            if (item == undefined) {
-                self.buckets[bucket_index][index] = item;
+        for (bucket.items) |item| {
+            if (eql(u8, item, val)) {
+                return Error.AlreadyAdded;
             }
         }
     }
 
-    pub fn get(self: *HashSet, val: []u8) void {
+    pub fn get(self: *HashSet, val: []const u8) void {
         _ = self;
         _ = val;
     }
 
-    pub fn remove(self: *HashSet, val: []u8) void {
+    pub fn remove(self: *HashSet, val: []const u8) void {
         _ = self;
         _ = val;
     }
@@ -52,15 +49,24 @@ pub const HashSet = struct {
     }
 };
 
-const Buckets = []Bucket;
-const Bucket = [][]const u8;
+const Buckets = ArrayList(Bucket);
+const Bucket = ArrayList(String);
+const String = []const u8;
 
 const Error = error{
     AlreadyAdded,
 };
 
-pub fn main() !void {
+test "init" {
     var h = try HashSet.init();
-    try h.add("Hello");
-    // print("{}\n", h.buckets);
+
+    for (h.buckets.items) |item| {
+        print("bucket: {any}\n", .{item});
+    }
+}
+
+test "add" {
+    var h = try HashSet.init();
+    try h.add("val");
+    try h.add("val");
 }

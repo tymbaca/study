@@ -21,18 +21,39 @@ pub fn main() !void {
     stdout.print("%v", hm);
 }
 
-test "simple test" {
-    // var list = std.ArrayList(i32).init(std.testing.allocator);
-    // defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    // try list.append(42);
-    // try std.testing.expectEqual(@as(i32, 42), list.pop());
-}
+// test "simple test" {
+//     // var list = std.ArrayList(i32).init(std.testing.allocator);
+//     // defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
+//     // try list.append(42);
+//     // try std.testing.expectEqual(@as(i32, 42), list.pop());
+// }
 
-test "out of bounds, no safety" {
-    // @setRuntimeSafety(false);
-    const a = [3]u8{ 1, 2, 3 };
-    var index: u8 = 2;
-    const b = a[index];
-    print("{}\n", .{b});
-    print("Hello\n", .{});
+// test "out of bounds, no safety" {
+//     // @setRuntimeSafety(false);
+//     // const a = [3]u8{ 1, 2, 3 };
+//     // var index: u8 = 2;
+//     // const b = a[index];
+//     // print("{}\n", .{b});
+//     // print("Hello\n", .{});
+// }
+
+test "arraylist indexing" {
+    const String = []const u8;
+    const Bucket = std.ArrayList(String);
+    const Buckets = std.ArrayList(Bucket);
+
+    var alloc = std.heap.page_allocator;
+    var buck = Bucket.init(alloc);
+    try buck.appendNTimes("Hello", 16);
+
+    var bucks = Buckets.init(alloc);
+    try bucks.appendNTimes(buck, 8);
+
+    for (buck.items) |item| {
+        print("{any}\n", .{item});
+    }
+
+    for (bucks.items) |ibuck| {
+        print("{any}\n", .{ibuck});
+    }
 }
