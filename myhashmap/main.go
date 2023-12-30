@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	hm := hashmap.NewHashMap()
+	hm := hashmap.New()
 
 	fmt.Println(hm)
 	hm.Set("a", "name")
