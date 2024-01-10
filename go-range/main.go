@@ -1,20 +1,15 @@
 package main
 
-import "fmt"
-
 type T struct {
-	i int
+	l []int
 }
 
 type TI interface{}
 
-func NewTI(c <-chan string) TI {
-	t := T{}
-	c <- "df"
-	return t
-}
-
 func main() {
-	t := NewTI()
-	fmt.Printf("%#v", t)
+	myList := []int{}
+	myList = append
+
+	myT := T{}
+	myT.l, myList = append(), append()
 }
