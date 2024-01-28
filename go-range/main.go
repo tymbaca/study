@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"time"
+)
+
 type T struct {
 	l []int
 }
@@ -7,9 +12,8 @@ type T struct {
 type TI interface{}
 
 func main() {
-	myList := []int{}
-	myList = append
-
-	myT := T{}
-	myT.l, myList = append(), append()
+	now := time.Date(2024, time.January, 32, 0, 0, 0, 0, time.UTC)
+	fmt.Println(now.String())
+	next := now.AddDate(0, 1, 0)
+	fmt.Println(next.String())
 }
