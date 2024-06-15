@@ -1,9 +1,12 @@
 package main
 
+import l "core:log"
 import "core:math"
 
 Coordinates :: distinct [2]int
-Mark :: struct {}
+Mark :: struct {
+	wire_id: int,
+}
 
 Program :: struct {
 	coord:         Coordinates,
@@ -28,7 +31,9 @@ create_and_run_program :: proc(wireset_: WireSet) -> Program {
 	}
 	using p
 
-	for wire in wireset {
+	l.info("starting program")
+	for wire, wire_id in wireset {
+		l.infof("starting wire_id: %d, wire len: %d", wire_id, len(wire))
 		for inst in wire {
 			offset: Coordinates
 			switch inst.direction {
@@ -44,13 +49,20 @@ create_and_run_program :: proc(wireset_: WireSet) -> Program {
 
 			for step in 0 ..< inst.steps {
 				coord += offset // step
+				l.debugf("step to %v", coord)
 
-				_, marked := world[coord]
-				if marked { 	// check
+				mark, marked := world[coord]
+				if marked && mark.wire_id != wire_id { 	// check
+					l.warnf(
+						"got already marked at %v by wire_id %dm (i'm mark id %d)",
+						coord,
+						mark.wire_id,
+						wire_id,
+					)
 					append(&intersections, coord) // save intersection if already was marked
 				}
 
-				world[coord] = {} // mark
+				world[coord] = {wire_id} // mark
 			}
 		}
 	}

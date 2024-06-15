@@ -2,6 +2,7 @@ package main
 
 import "core:fmt"
 import "core:io"
+import l "core:log"
 import "core:strconv"
 import "core:strings"
 
@@ -31,7 +32,6 @@ decode :: proc(data: []byte) -> (wireset: WireSet, err: Error) {
 	for line, li in lines {
 		if len(line) == 0 do continue
 
-		log("line:", li, "|", line)
 		raw_insructions := strings.split(line, ",")
 		instructions := make([]Instruction, len(raw_insructions))
 
