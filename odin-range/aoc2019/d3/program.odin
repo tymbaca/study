@@ -54,8 +54,8 @@ create_and_run_program :: proc(wireset_: WireSet) -> Program {
 			for step in 0 ..< inst.steps {
 				coord += offset // step
 				rl.DrawPixel(
-					_screenWidth / 2 + i32(coord.x) / 10,
-					_screenHeight / 2 + i32(coord.y) / 10,
+					_screenWidth / 2 + i32(coord.x) / 25,
+					_screenHeight / 2 + i32(coord.y) / 25,
 					colors[wire_id % len(colors)], // choose color
 				)
 				l.debugf("step to %v", coord)
