@@ -2,6 +2,7 @@ package main
 
 import l "core:log"
 import "core:math"
+import rl "vendor:raylib"
 
 Coordinates :: distinct [2]int
 Mark :: struct {
@@ -14,6 +15,8 @@ Program :: struct {
 	world:         map[Coordinates]Mark,
 	intersections: [dynamic]Coordinates,
 }
+
+colors := [?]rl.Color{rl.RED, rl.BLUE, rl.GREEN}
 
 /*
     O------- +x
@@ -34,6 +37,7 @@ create_and_run_program :: proc(wireset_: WireSet) -> Program {
 	l.info("starting program")
 	for wire, wire_id in wireset {
 		l.infof("starting wire_id: %d, wire len: %d", wire_id, len(wire))
+		coord = {0, 0}
 		for inst in wire {
 			offset: Coordinates
 			switch inst.direction {
@@ -49,6 +53,11 @@ create_and_run_program :: proc(wireset_: WireSet) -> Program {
 
 			for step in 0 ..< inst.steps {
 				coord += offset // step
+				rl.DrawPixel(
+					_screenWidth / 2 + i32(coord.x) / 10,
+					_screenHeight / 2 + i32(coord.y) / 10,
+					colors[wire_id % len(colors)], // choose color
+				)
 				l.debugf("step to %v", coord)
 
 				mark, marked := world[coord]
@@ -76,9 +85,9 @@ distance :: proc(src, dst: Coordinates) -> int {
 }
 
 // returns distance as 2nd value
-find_closest :: proc(dsts: []Coordinates, src: Coordinates = {0, 0}) -> (Coordinates, int) {
+find_closest :: proc(dsts: []Coordinates, src: Coordinates = {0, 0}) -> (Coordinates, int, Error) {
 	if len(dsts) == 0 {
-		panic("no dsts")
+		return {}, 0, "no dsts"
 	}
 
 	closest := dsts[0]
@@ -91,5 +100,5 @@ find_closest :: proc(dsts: []Coordinates, src: Coordinates = {0, 0}) -> (Coordin
 		}
 	}
 
-	return closest, closest_dist
+	return closest, closest_dist, nil
 }

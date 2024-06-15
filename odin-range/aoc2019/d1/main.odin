@@ -4,7 +4,26 @@ import "core:fmt"
 import l "core:log"
 import "core:os"
 
+import "core:time"
+import rl "vendor:raylib"
+
+_screenWidth: i32 = 1000
+_screenHeight: i32 = 700
+
 main :: proc() {
+	rl.InitWindow(_screenWidth, _screenHeight, "dungeons")
+	rl.SetTargetFPS(60)
+
+	rl.BeginDrawing()
+	rl.ClearBackground(rl.DARKGRAY)
+	run()
+	rl.EndDrawing()
+	for !rl.WindowShouldClose() {
+	}
+}
+
+
+run :: proc() {
 	context.logger = l.create_console_logger()
 	defer l.destroy_console_logger(context.logger)
 
@@ -16,7 +35,11 @@ main :: proc() {
 
 	wireset := load_instructions(filename)
 	program := create_and_run_program(wireset)
-	closest, dist := find_closest(program.intersections[:])
+	closest, dist, err := find_closest(program.intersections[:])
+	if err != nil {
+		l.error(err)
+	}
+
 	l.info(dist)
 }
 
