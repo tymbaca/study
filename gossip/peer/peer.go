@@ -83,10 +83,26 @@ func (p *Peer) Stop() {
 
 func (p *Peer) Kill(dur time.Duration) {
 	go func() {
+		p.mu.Lock()
 		p.dead = true
+		p.mu.Unlock()
+
 		<-time.After(dur)
+
+		p.mu.Lock()
 		p.dead = false
+		p.mu.Unlock()
 	}()
+}
+
+func (p *Peer) ToggleDead() {
+	p.mu.Lock()
+	p.dead = !p.dead
+	p.mu.Unlock()
+}
+
+func (p *Peer) IsAlive() bool {
+	return !p.dead
 }
 
 func (p *Peer) Addr() string {

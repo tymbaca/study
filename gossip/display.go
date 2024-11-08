@@ -34,6 +34,7 @@ func launchWindow(ctx context.Context) {
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.Black)
 		rl.DrawFPS(10, 10)
+		rl.DrawText("LMB - Pass random data to node\nRMB - Kill/revive the node\n1 - Toggle names\n2 - Toggle peer lists", 10, 35, _infoSize, rl.Gray)
 
 		mu.Lock()
 		positions := CircleLayout(len(peers), float64(rl.Lerp(100, _winHeight, float32(len(peers))/100)), _winWidth/2, _winHeight/2)
@@ -45,8 +46,14 @@ func launchWindow(ctx context.Context) {
 
 		drawNodes(peers, addrs, positions)
 
-		if rl.IsKeyPressed(rl.KeySpace) {
-			choosePeer().HandleSetSheeps(peer.Gossip[int]{Val: rand.Intn(100), Time: time.Now()})
+		if clicked := getClickedPeer(peers, addrs, positions); clicked != nil {
+			if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
+				clicked.ToggleDead()
+			}
+
+			if rl.IsMouseButtonPressed(rl.MouseButtonLeft) {
+				clicked.HandleSetSheeps(peer.Gossip[int]{Val: rand.Intn(100), Time: time.Now()})
+			}
 		}
 
 		if rl.IsKeyPressed(rl.KeyEqual) {
@@ -57,7 +64,13 @@ func launchWindow(ctx context.Context) {
 			removePeer()
 		}
 
-		handleKill()
+		if rl.IsKeyPressed(rl.KeyOne) {
+			_drawAddrs = !_drawAddrs
+		}
+
+		if rl.IsKeyPressed(rl.KeyTwo) {
+			_drawInfo = !_drawInfo
+		}
 
 		mu.Unlock()
 
@@ -65,8 +78,24 @@ func launchWindow(ctx context.Context) {
 	}
 }
 
-func handleKill() {
+func getClickedPeer(allPeers map[string]*peer.Peer, addrs []string, positions []Vector2) *peer.Peer {
+	if !rl.IsMouseButtonPressed(rl.MouseButtonLeft) && !rl.IsMouseButtonPressed(rl.MouseButtonRight) {
+		return nil
+	}
+
+	for i, nodePos := range positions {
+		if rl.Vector2Distance(rl.GetMousePosition(), rl.Vector2(nodePos)) <= _nodeRadius {
+			return allPeers[addrs[i]]
+		}
+	}
+
+	return nil
 }
+
+var (
+	_drawAddrs = true
+	_drawInfo  = true
+)
 
 func drawNodes(allPeers map[string]*peer.Peer, addrs []string, positions []Vector2) {
 	for i, addr := range addrs {
@@ -76,8 +105,14 @@ func drawNodes(allPeers map[string]*peer.Peer, addrs []string, positions []Vecto
 		rl.DrawCircleV(rl.Vector2(pos), _nodeRadius, getColor(peer))
 		rl.DrawText(strconv.Itoa(peer.GetSheeps()), int32(pos.X)-10, int32(pos.Y-10), _textSize, rl.Black)
 		hisPeers := peer.GetPeersList()
-		rl.DrawText(addr, int32(pos.X)+10, int32(pos.Y+20), _addrSize, rl.DarkGreen)
-		rl.DrawText(strings.Join(hisPeers, "\n"), int32(pos.X)+10, int32(pos.Y+25+_addrSize), _infoSize, rl.DarkBrown)
+
+		if _drawAddrs {
+			rl.DrawText(addr, int32(pos.X)+10, int32(pos.Y+20), _addrSize, rl.DarkGreen)
+		}
+
+		if _drawInfo {
+			rl.DrawText(strings.Join(hisPeers, "\n"), int32(pos.X)+10, int32(pos.Y+25+_addrSize), _infoSize, rl.DarkBrown)
+		}
 	}
 }
 
@@ -107,6 +142,9 @@ func drawLinks(allPeers map[string]*peer.Peer, addrs []string, positions []Vecto
 }
 
 func getColor(peer *peer.Peer) rl.Color {
+	if !peer.IsAlive() {
+		return rl.NewColor(70, 10, 15, 255)
+	}
 	t := peer.GetSheepsTime()
 	oldness := time.Since(t)
 
