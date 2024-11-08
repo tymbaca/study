@@ -30,8 +30,7 @@ func SpawnPeer(ctx context.Context) {
 }
 
 func spawnPeer(ctx context.Context) {
-	// newPeer := gofakeit.UUID()
-	newAddr := gofakeit.Name()
+	newAddr := gofakeit.Noun()
 
 	randomPeer := choosePeer()
 	if randomPeer != nil {
