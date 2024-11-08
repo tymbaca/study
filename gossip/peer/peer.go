@@ -6,10 +6,10 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"math/rand"
-	"slices"
 	"sync"
 	"time"
+
+	"github.com/samber/lo"
 )
 
 // TODO: we need reverce gossip mechanism: if p1 gossips to p2 and it appears
@@ -23,8 +23,8 @@ type Peer struct {
 	cancel context.CancelFunc
 
 	mu        sync.RWMutex
-	sheeps    Gossip[int]
-	peers     Gossip[[]string]
+	sheeps    Sheeps
+	peers     PeersList
 	transport transport
 }
 
@@ -35,13 +35,13 @@ func New(ctx context.Context, addr string, transport transport) *Peer {
 		ctx:       ctx,
 		cancel:    cancel,
 		transport: transport,
-		peers:     Gossip[[]string]{Val: []string{addr}},
+		peers:     Gossip[map[string]struct{}]{Val: map[string]struct{}{addr: {}}},
 	}
 }
 
 type transport interface {
-	SetSheeps(peer string, sheeps Sheeps) error
-	SetPeers(peer string, peers PeersList) error
+	SetSheeps(sender string, peer string, sheeps Sheeps) error
+	SetPeers(sender string, peer string, peers PeersList) error
 }
 
 func (p *Peer) Launch(interval time.Duration) {
@@ -53,16 +53,16 @@ func (p *Peer) Launch(interval time.Duration) {
 			return
 		}
 
-		peer := p.peers.Val[rand.Intn(len(p.peers.Val))]
-		if peer == p.me {
+		peer := p.getRandomPeer()
+		if peer != p.me {
 			continue
 		}
 
-		if err := p.transport.SetSheeps(peer, p.sheeps); errors.Is(err, ErrDown) {
+		if err := p.transport.SetSheeps(p.me, peer, p.sheeps); errors.Is(err, ErrDown) {
 			p.RemovePeer(peer)
 		}
 
-		if err := p.transport.SetPeers(peer, p.peers); errors.Is(err, ErrDown) {
+		if err := p.transport.SetPeers(p.me, peer, p.peers); errors.Is(err, ErrDown) {
 			p.RemovePeer(peer)
 		}
 	}
@@ -87,9 +87,15 @@ func (p *Peer) SetSheeps(newSheeps Sheeps) {
 	p.sheeps = newSheeps
 }
 
-func (p *Peer) SetPeers(newPeers PeersList) {
+func (p *Peer) SetPeers(sender string, newPeers PeersList) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	// bad
+	if sender != "" {
+		p.peers.Val[sender] = struct{}{}
+		p.peers.Time = time.Now()
+	}
 
 	if p.peers.Time.After(newPeers.Time) {
 		return
@@ -98,11 +104,14 @@ func (p *Peer) SetPeers(newPeers PeersList) {
 	p.peers = newPeers
 }
 
-func (p *Peer) AddPeer(peer string) {
+func (p *Peer) AddPeer(sender, peer string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	p.peers.Val = append(p.peers.Val, peer)
+	p.peers.Val[peer] = struct{}{}
+	if sender != peer && sender != "" {
+		p.peers.Val[sender] = struct{}{}
+	}
 	p.peers.Time = time.Now()
 }
 
@@ -110,9 +119,9 @@ func (p *Peer) RemovePeer(addr string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	for i, peerAddr := range p.peers.Val { // FIX: out of bounce if quickly remove twice
+	for peerAddr := range p.peers.Val { // FIX: out of bounce if quickly remove twice
 		if peerAddr == addr {
-			p.peers.Val = slices.Delete(p.peers.Val, i, i+1)
+			delete(p.peers.Val, peerAddr)
 			p.peers.Time = time.Now()
 			return
 		}
@@ -126,11 +135,18 @@ func (p *Peer) GetSheeps() int {
 	return p.sheeps.Val
 }
 
-func (p *Peer) GetPeers() []string {
+func (p *Peer) GetPeersMap() map[string]struct{} {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
 	return p.peers.Val
+}
+
+func (p *Peer) GetPeersList() []string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	return lo.Keys(p.peers.Val)
 }
 
 func (p *Peer) GetSheepsTime() time.Time {
@@ -142,12 +158,22 @@ func (p *Peer) GetSheepsTime() time.Time {
 
 type (
 	Sheeps    = Gossip[int]
-	PeersList = Gossip[[]string]
+	PeersList = Gossip[map[string]struct{}]
 )
 
 type Gossip[T any] struct {
 	Val  T
 	Time time.Time
+}
+
+func (p *Peer) getRandomPeer() string {
+	for addr := range p.peers.Val {
+		if addr != p.me {
+			return addr
+		}
+	}
+
+	return p.me
 }
 
 func toBytes[T any](val T) []byte {

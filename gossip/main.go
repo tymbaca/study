@@ -4,14 +4,11 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"slices"
 	"sync"
 	"time"
 
-	rl "github.com/gen2brain/raylib-go/raylib"
 	"github.com/samber/lo"
 	"github.com/tymbaca/study/gossip/peer"
-	"golang.org/x/exp/rand"
 )
 
 var (
@@ -20,10 +17,6 @@ var (
 )
 
 const (
-	_nodeRadius     = 20
-	_textSize       = 20
-	_addrSize       = 8
-	_infoSize       = 6
 	_updateInterval = 300 * time.Millisecond
 )
 
@@ -36,8 +29,9 @@ func main() {
 	}
 
 	addrs := lo.Keys(peers)
+	addrsMap := lo.SliceToMap(addrs, func(addr string) (string, struct{}) { return addr, struct{}{} })
 	for key := range peers {
-		peers[key].SetPeers(peer.Gossip[[]string]{Val: addrs, Time: time.Now()})
+		peers[key].SetPeers("", peer.Gossip[map[string]struct{}]{Val: addrsMap, Time: time.Now()})
 		go peers[key].Launch(_updateInterval)
 	}
 
@@ -64,39 +58,5 @@ func main() {
 
 	//--------------------------------------------------------------------------------------------------
 
-	rl.InitWindow(800, 600, "gossip")
-	defer rl.CloseWindow()
-	rl.SetTargetFPS(60)
-
-	for !rl.WindowShouldClose() {
-		rl.BeginDrawing()
-		rl.ClearBackground(rl.Black)
-		rl.DrawFPS(10, 10)
-
-		mu.Lock()
-		positions := CircleLayout(len(peers), float64(rl.Lerp(100, 500, float32(len(peers))/100)), 400, 300)
-		addrs := lo.Keys(peers)
-		slices.Sort(addrs)
-
-		// Draw links
-		drawLinks(peers, addrs, positions)
-
-		drawNodes(peers, addrs, positions)
-
-		if rl.IsKeyPressed(rl.KeySpace) {
-			choosePeer().SetSheeps(peer.Gossip[int]{Val: rand.Intn(100), Time: time.Now()})
-		}
-
-		if rl.IsKeyPressed(rl.KeyEqual) {
-			spawnPeer(ctx)
-		}
-
-		if rl.IsKeyPressed(rl.KeyMinus) {
-			removePeer()
-		}
-
-		mu.Unlock()
-
-		rl.EndDrawing()
-	}
+	launchWindow(ctx)
 }

@@ -35,7 +35,7 @@ func spawnPeer(ctx context.Context) {
 
 	randomPeer := choosePeer()
 	if randomPeer != nil {
-		randomPeer.AddPeer(newAddr)
+		randomPeer.AddPeer("", newAddr)
 	}
 
 	newPeer := peer.New(ctx, newAddr, &mapTransport{})
@@ -60,7 +60,7 @@ func removePeer() {
 
 type mapTransport struct{}
 
-func (t *mapTransport) SetSheeps(addr string, sheeps peer.Sheeps) error {
+func (t *mapTransport) SetSheeps(sender string, addr string, sheeps peer.Sheeps) error {
 	mu.RLock()
 	defer mu.RUnlock()
 
@@ -73,7 +73,7 @@ func (t *mapTransport) SetSheeps(addr string, sheeps peer.Sheeps) error {
 	return nil
 }
 
-func (t *mapTransport) SetPeers(addr string, addrs peer.PeersList) error {
+func (t *mapTransport) SetPeers(sender string, addr string, addrs peer.PeersList) error {
 	mu.RLock()
 	defer mu.RUnlock()
 
@@ -82,6 +82,6 @@ func (t *mapTransport) SetPeers(addr string, addrs peer.PeersList) error {
 		return peer.ErrDown
 	}
 
-	toPeer.SetPeers(addrs)
+	toPeer.SetPeers(sender, addrs)
 	return nil
 }

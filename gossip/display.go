@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"image/color"
 	"math"
 	"slices"
@@ -9,8 +10,57 @@ import (
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
+	"github.com/samber/lo"
 	"github.com/tymbaca/study/gossip/peer"
+	"golang.org/x/exp/rand"
 )
+
+const (
+	_winWidth   = 1200
+	_winHeight  = 1000
+	_nodeRadius = 20
+	_textSize   = 20
+	_addrSize   = 8
+	_infoSize   = 6
+)
+
+func launchWindow(ctx context.Context) {
+	rl.InitWindow(_winWidth, _winHeight, "gossip")
+	defer rl.CloseWindow()
+	rl.SetTargetFPS(60)
+
+	for !rl.WindowShouldClose() {
+		rl.BeginDrawing()
+		rl.ClearBackground(rl.Black)
+		rl.DrawFPS(10, 10)
+
+		mu.Lock()
+		positions := CircleLayout(len(peers), float64(rl.Lerp(100, _winHeight, float32(len(peers))/100)), _winWidth/2, _winHeight/2)
+		addrs := lo.Keys(peers)
+		slices.Sort(addrs)
+
+		// Draw links
+		drawLinks(peers, addrs, positions)
+
+		drawNodes(peers, addrs, positions)
+
+		if rl.IsKeyPressed(rl.KeySpace) {
+			choosePeer().SetSheeps(peer.Gossip[int]{Val: rand.Intn(100), Time: time.Now()})
+		}
+
+		if rl.IsKeyPressed(rl.KeyEqual) {
+			spawnPeer(ctx)
+		}
+
+		if rl.IsKeyPressed(rl.KeyMinus) {
+			removePeer()
+		}
+
+		mu.Unlock()
+
+		rl.EndDrawing()
+	}
+}
 
 func drawNodes(allPeers map[string]*peer.Peer, addrs []string, positions []Vector2) {
 	for i, addr := range addrs {
@@ -19,7 +69,7 @@ func drawNodes(allPeers map[string]*peer.Peer, addrs []string, positions []Vecto
 
 		rl.DrawCircleV(rl.Vector2(pos), _nodeRadius, getColor(peer))
 		rl.DrawText(strconv.Itoa(peer.GetSheeps()), int32(pos.X)-10, int32(pos.Y-10), _textSize, rl.Black)
-		hisPeers := peer.GetPeers()
+		hisPeers := peer.GetPeersList()
 		rl.DrawText(addr, int32(pos.X)+10, int32(pos.Y+20), _addrSize, rl.DarkGreen)
 		rl.DrawText(strings.Join(hisPeers, "\n"), int32(pos.X)+10, int32(pos.Y+25+_addrSize), _infoSize, rl.DarkBrown)
 	}
@@ -29,7 +79,7 @@ func drawLinks(allPeers map[string]*peer.Peer, addrs []string, positions []Vecto
 	for i, addr := range addrs {
 		from := rl.Vector2(positions[i])
 		this := allPeers[addr]
-		peers := this.GetPeers()
+		peers := this.GetPeersList()
 
 		for _, peer := range peers {
 			if addr == peer {
