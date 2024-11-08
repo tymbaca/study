@@ -16,12 +16,13 @@ import (
 )
 
 const (
-	_winWidth   = 1200
-	_winHeight  = 1000
-	_nodeRadius = 20
-	_textSize   = 20
-	_addrSize   = 8
-	_infoSize   = 6
+	_winWidth    = 1200
+	_winHeight   = 1000
+	_nodeRadius  = 20
+	_textSize    = 20
+	_addrSize    = 8
+	_infoSize    = 6
+	_oldestColor = 8 * time.Second
 )
 
 func launchWindow(ctx context.Context) {
@@ -45,7 +46,7 @@ func launchWindow(ctx context.Context) {
 		drawNodes(peers, addrs, positions)
 
 		if rl.IsKeyPressed(rl.KeySpace) {
-			choosePeer().SetSheeps(peer.Gossip[int]{Val: rand.Intn(100), Time: time.Now()})
+			choosePeer().HandleSetSheeps(peer.Gossip[int]{Val: rand.Intn(100), Time: time.Now()})
 		}
 
 		if rl.IsKeyPressed(rl.KeyEqual) {
@@ -56,10 +57,15 @@ func launchWindow(ctx context.Context) {
 			removePeer()
 		}
 
+		handleKill()
+
 		mu.Unlock()
 
 		rl.EndDrawing()
 	}
+}
+
+func handleKill() {
 }
 
 func drawNodes(allPeers map[string]*peer.Peer, addrs []string, positions []Vector2) {
@@ -103,9 +109,8 @@ func drawLinks(allPeers map[string]*peer.Peer, addrs []string, positions []Vecto
 func getColor(peer *peer.Peer) rl.Color {
 	t := peer.GetSheepsTime()
 	oldness := time.Since(t)
-	oldest := 4 * time.Second
 
-	factor := rl.Clamp(float32(oldness)/float32(oldest), 0, 1)
+	factor := rl.Clamp(float32(oldness)/float32(_oldestColor), 0, 1)
 	val := rl.Lerp(20, 255, factor) // from green to red
 	return color.RGBA{R: uint8(val), G: 122, B: 122, A: 255}
 }

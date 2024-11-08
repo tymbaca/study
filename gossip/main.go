@@ -31,12 +31,12 @@ func main() {
 	addrs := lo.Keys(peers)
 	addrsMap := lo.SliceToMap(addrs, func(addr string) (string, struct{}) { return addr, struct{}{} })
 	for key := range peers {
-		peers[key].SetPeers("", peer.Gossip[map[string]struct{}]{Val: addrsMap, Time: time.Now()})
+		peers[key].HandleSetPeers("", peer.Gossip[map[string]struct{}]{Val: addrsMap, Time: time.Now()})
 		go peers[key].Launch(_updateInterval)
 	}
 
 	entry := ChoosePeer()
-	entry.SetSheeps(peer.Gossip[int]{Val: 10, Time: time.Now()})
+	entry.HandleSetSheeps(peer.Gossip[int]{Val: 10, Time: time.Now()})
 
 	// go func() {
 	// 	for range time.Tick(1500 * time.Millisecond) {

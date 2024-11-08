@@ -66,10 +66,10 @@ func (t *mapTransport) SetSheeps(sender string, addr string, sheeps peer.Sheeps)
 
 	toPeer, ok := peers[addr]
 	if !ok {
-		return peer.ErrDown
+		return peer.ErrRemoved
 	}
 
-	toPeer.SetSheeps(sheeps)
+	toPeer.HandleSetSheeps(sheeps)
 	return nil
 }
 
@@ -79,9 +79,9 @@ func (t *mapTransport) SetPeers(sender string, addr string, addrs peer.PeersList
 
 	toPeer, ok := peers[addr]
 	if !ok {
-		return peer.ErrDown
+		return peer.ErrRemoved
 	}
 
-	toPeer.SetPeers(sender, addrs)
+	toPeer.HandleSetPeers(sender, addrs)
 	return nil
 }

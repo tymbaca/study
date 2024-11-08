@@ -16,12 +16,17 @@ import (
 // TODO: we need reverce gossip mechanism: if p1 gossips to p2 and it appears
 // that p2 has newer gossip it must return it to p1.
 
-var ErrDown = fmt.Errorf("node is down")
+var (
+	ErrRemoved = fmt.Errorf("node is removed")
+	ErrDown    = fmt.Errorf("node is temporarily down")
+)
 
 type Peer struct {
 	me     string
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	dead bool
 
 	mu        sync.RWMutex
 	sheeps    Sheeps
@@ -49,10 +54,9 @@ func (p *Peer) Launch(interval time.Duration) {
 	t := time.NewTicker(interval)
 	defer t.Stop()
 
-	for range t.C {
+	for {
 		for peer := range p.GetPeersMap() {
-			if peer != p.me {
-				fmt.Println(p.me, "got inself in random get")
+			if peer == p.me {
 				continue
 			}
 
@@ -60,13 +64,15 @@ func (p *Peer) Launch(interval time.Duration) {
 				return
 			}
 
-			if err := p.transport.SetSheeps(p.me, peer, p.sheeps); errors.Is(err, ErrDown) {
+			if err := p.transport.SetSheeps(p.me, peer, p.sheeps); errors.Is(err, ErrRemoved) {
 				p.RemovePeer(peer)
 			}
 
-			if err := p.transport.SetPeers(p.me, peer, p.peers); errors.Is(err, ErrDown) {
+			if err := p.transport.SetPeers(p.me, peer, p.GetPeers()); errors.Is(err, ErrRemoved) {
 				p.RemovePeer(peer)
 			}
+
+			<-t.C
 		}
 	}
 }
@@ -75,36 +81,56 @@ func (p *Peer) Stop() {
 	p.cancel()
 }
 
+func (p *Peer) Kill(dur time.Duration) {
+	go func() {
+		p.dead = true
+		<-time.After(dur)
+		p.dead = false
+	}()
+}
+
 func (p *Peer) Addr() string {
 	return p.me
 }
 
-func (p *Peer) SetSheeps(newSheeps Sheeps) {
+func (p *Peer) HandleSetSheeps(newSheeps Sheeps) error {
+	if p.dead {
+		return ErrDown
+	}
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	if p.sheeps.Time.After(newSheeps.Time) {
-		return
+		return nil
 	}
 
 	p.sheeps = newSheeps
+	return nil
 }
 
-func (p *Peer) SetPeers(sender string, newPeers PeersList) {
+func (p *Peer) HandleSetPeers(sender string, newPeers PeersList) error {
+	if p.dead {
+		return ErrDown
+	}
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	// bad
-	if sender != "" {
-		p.peers.Val[sender] = struct{}{}
-		p.peers.Time = time.Now()
-	}
+	// if sender != "" {
+	// 	defer func() {
+	// 		p.peers.Val[sender] = struct{}{}
+	// 		p.peers.Time = time.Now()
+	// 	}()
+	// }
 
 	if p.peers.Time.After(newPeers.Time) {
-		return
+		return nil
 	}
 
 	p.peers = newPeers
+	return nil
 }
 
 func (p *Peer) AddPeer(sender, peer string) {
@@ -122,7 +148,7 @@ func (p *Peer) RemovePeer(addr string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	for peerAddr := range p.peers.Val { // FIX: out of bounce if quickly remove twice
+	for peerAddr := range p.peers.Val {
 		if peerAddr == addr {
 			delete(p.peers.Val, peerAddr)
 			p.peers.Time = time.Now()
@@ -136,6 +162,13 @@ func (p *Peer) GetSheeps() int {
 	defer p.mu.RUnlock()
 
 	return p.sheeps.Val
+}
+
+func (p *Peer) GetPeers() PeersList {
+	return PeersList{
+		Val:  p.GetPeersMap(),
+		Time: p.peers.Time,
+	}
 }
 
 func (p *Peer) GetPeersMap() map[string]struct{} {
