@@ -3,11 +3,15 @@ package peer
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"math/rand"
+	"slices"
 	"sync"
 	"time"
 )
+
+var ErrDown = fmt.Errorf("node is down")
 
 type Peer struct {
 	me string
@@ -27,8 +31,8 @@ func New(addr string, transport transport) *Peer {
 }
 
 type transport interface {
-	SetSheeps(peer string, sheeps Sheeps)
-	SetPeers(peer string, peers PeersList)
+	SetSheeps(peer string, sheeps Sheeps) error
+	SetPeers(peer string, peers PeersList) error
 }
 
 func (p *Peer) Launch(interval time.Duration) {
@@ -38,12 +42,18 @@ func (p *Peer) Launch(interval time.Duration) {
 			continue
 		}
 
-		fmt.Println(p.me, "sheep count is", p.sheeps.Val)
-		// fmt.Println(p.me, "it talking to", peer)
+		if err := p.transport.SetSheeps(peer, p.sheeps); errors.Is(err, ErrDown) {
+			p.RemovePeer(peer)
+		}
 
-		p.transport.SetSheeps(peer, p.sheeps)
-		p.transport.SetPeers(peer, p.peers)
+		if err := p.transport.SetPeers(peer, p.peers); errors.Is(err, ErrDown) {
+			p.RemovePeer(peer)
+		}
 	}
+}
+
+func (p *Peer) Addr() string {
+	return p.me
 }
 
 func (p *Peer) SetSheeps(newSheeps Sheeps) {
@@ -76,6 +86,19 @@ func (p *Peer) AddPeer(peer string) {
 	p.peers.Time = time.Now()
 }
 
+func (p *Peer) RemovePeer(addr string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for i, peerAddr := range p.peers.Val { // FIX: out of bounce if quickly remove twice
+		if peerAddr == addr {
+			p.peers.Val = slices.Delete(p.peers.Val, i, i+1)
+			p.peers.Time = time.Now()
+			return
+		}
+	}
+}
+
 func (p *Peer) GetSheeps() int {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -90,11 +113,11 @@ func (p *Peer) GetPeers() []string {
 	return p.peers.Val
 }
 
-func (p *Peer) GetPeersListTime() time.Time {
+func (p *Peer) GetSheepsTime() time.Time {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	return p.peers.Time
+	return p.sheeps.Time
 }
 
 type (

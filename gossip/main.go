@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"image/color"
 	"slices"
 	"strconv"
@@ -20,8 +19,10 @@ var (
 )
 
 const (
-	_nodeRadius = 20
-	_textSize   = 20
+	_nodeRadius     = 20
+	_textSize       = 20
+	_captionSize    = 8
+	_updateInterval = 100 * time.Millisecond
 )
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 	addrs := lo.Keys(peers)
 	for key := range peers {
 		peers[key].SetPeers(peer.Gossip[[]string]{Val: addrs, Time: time.Now()})
-		go peers[key].Launch(10 * time.Millisecond)
+		go peers[key].Launch(_updateInterval)
 	}
 
 	entry := ChoosePeer()
@@ -44,17 +45,17 @@ func main() {
 	// 	}
 	// }()
 
-	go func() {
-		for range time.Tick(1000 * time.Millisecond) {
-			SpawnPeer()
-		}
-	}()
+	// go func() {
+	// 	for range time.Tick(5000 * time.Millisecond) {
+	// 		SpawnPeer()
+	// 	}
+	// }()
 
-	go func() {
-		for range time.Tick(1700 * time.Millisecond) {
-			RemovePeer()
-		}
-	}()
+	// go func() {
+	// 	for range time.Tick(1700 * time.Millisecond) {
+	// 		RemovePeer()
+	// 	}
+	// }()
 
 	//--------------------------------------------------------------------------------------------------
 
@@ -67,7 +68,7 @@ func main() {
 		rl.ClearBackground(rl.Black)
 		rl.DrawFPS(10, 10)
 
-		mu.RLock()
+		mu.Lock()
 		positions := CircleLayout(len(peers), float64(rl.Lerp(100, 500, float32(len(peers))/100)), 400, 300)
 		addrs := lo.Keys(peers)
 		slices.Sort(addrs)
@@ -75,21 +76,34 @@ func main() {
 		// Draw links
 		drawLinks(peers, addrs, positions)
 
-		for i, addr := range addrs {
-			peer := peers[addr]
-			pos := positions[i]
-
-			rl.DrawCircleV(rl.Vector2(pos), _nodeRadius, getColor(peer))
-			rl.DrawText(strconv.Itoa(peer.GetSheeps()), int32(pos.X)-10, int32(pos.Y-10), _textSize, rl.Black)
-		}
+		drawNodes(peers, addrs, positions)
 
 		if rl.IsKeyPressed(rl.KeySpace) {
 			choosePeer().SetSheeps(peer.Gossip[int]{Val: rand.Intn(100), Time: time.Now()})
 		}
 
-		mu.RUnlock()
+		if rl.IsKeyPressed(rl.KeyEqual) {
+			spawnPeer()
+		}
+
+		if rl.IsKeyPressed(rl.KeyMinus) {
+			removePeer()
+		}
+
+		mu.Unlock()
 
 		rl.EndDrawing()
+	}
+}
+
+func drawNodes(allPeers map[string]*peer.Peer, addrs []string, positions []Vector2) {
+	for i, addr := range addrs {
+		peer := peers[addr]
+		pos := positions[i]
+
+		rl.DrawCircleV(rl.Vector2(pos), _nodeRadius, getColor(peer))
+		rl.DrawText(strconv.Itoa(peer.GetSheeps()), int32(pos.X)-10, int32(pos.Y-10), _textSize, rl.Black)
+		rl.DrawText(addr, int32(pos.X)+10, int32(pos.Y+20), _captionSize, rl.DarkGreen)
 	}
 }
 
@@ -110,9 +124,8 @@ func drawLinks(allPeers map[string]*peer.Peer, addrs []string, positions []Vecto
 
 			to := rl.Vector2(positions[toIdx])
 			rl.DrawLineV(from, to, rl.DarkGray)
+
 			pointFac := (rl.Vector2Distance(from, to) - _nodeRadius - 5) / rl.Vector2Distance(from, to)
-			fmt.Println("fac:", pointFac)
-			fmt.Println("dist:", rl.Vector2Distance(from, to))
 			pointPos := rl.Vector2Lerp(from, to, pointFac)
 			rl.DrawCircleV(pointPos, 3, rl.DarkGray)
 		}
@@ -120,7 +133,7 @@ func drawLinks(allPeers map[string]*peer.Peer, addrs []string, positions []Vecto
 }
 
 func getColor(peer *peer.Peer) rl.Color {
-	t := peer.GetPeersListTime()
+	t := peer.GetSheepsTime()
 	oldness := time.Since(t)
 	oldest := 10 * time.Second
 

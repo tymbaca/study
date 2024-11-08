@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/tymbaca/study/gossip/peer"
 )
@@ -31,14 +29,16 @@ func SpawnPeer() {
 
 func spawnPeer() {
 	// newPeer := gofakeit.UUID()
-	newPeer := gofakeit.Name()
+	newAddr := gofakeit.Name()
 
 	randomPeer := choosePeer()
 	if randomPeer != nil {
-		randomPeer.AddPeer(newPeer)
+		randomPeer.AddPeer(newAddr)
 	}
 
-	peers[newPeer] = peer.New(newPeer, &mapTransport{})
+	newPeer := peer.New(newAddr, &mapTransport{})
+	peers[newAddr] = newPeer
+	go newPeer.Launch(_updateInterval)
 }
 
 func RemovePeer() {
@@ -57,28 +57,28 @@ func removePeer() {
 
 type mapTransport struct{}
 
-func (t *mapTransport) SetSheeps(addr string, sheeps peer.Sheeps) {
+func (t *mapTransport) SetSheeps(addr string, sheeps peer.Sheeps) error {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	peer, ok := peers[addr]
+	toPeer, ok := peers[addr]
 	if !ok {
-		fmt.Println("got unknown peer: " + addr)
-		return
+		return peer.ErrDown
 	}
 
-	peer.SetSheeps(sheeps)
+	toPeer.SetSheeps(sheeps)
+	return nil
 }
 
-func (t *mapTransport) SetPeers(addr string, addrs peer.PeersList) {
+func (t *mapTransport) SetPeers(addr string, addrs peer.PeersList) error {
 	mu.RLock()
 	defer mu.RUnlock()
 
-	peer, ok := peers[addr]
+	toPeer, ok := peers[addr]
 	if !ok {
-		fmt.Println("got unknown peer: " + addr)
-		return
+		return peer.ErrDown
 	}
 
-	peer.SetPeers(addrs)
+	toPeer.SetPeers(addrs)
+	return nil
 }
