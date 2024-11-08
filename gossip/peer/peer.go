@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"golang.org/x/exp/slices"
 )
 
 // TODO: we need reverce gossip mechanism: if p1 gossips to p2 and it appears
@@ -49,21 +50,23 @@ func (p *Peer) Launch(interval time.Duration) {
 	defer t.Stop()
 
 	for range t.C {
-		if p.ctx.Err() != nil {
-			return
-		}
+		for peer := range p.GetPeersMap() {
+			if peer != p.me {
+				fmt.Println(p.me, "got inself in random get")
+				continue
+			}
 
-		peer := p.getRandomPeer()
-		if peer != p.me {
-			continue
-		}
+			if p.ctx.Err() != nil {
+				return
+			}
 
-		if err := p.transport.SetSheeps(p.me, peer, p.sheeps); errors.Is(err, ErrDown) {
-			p.RemovePeer(peer)
-		}
+			if err := p.transport.SetSheeps(p.me, peer, p.sheeps); errors.Is(err, ErrDown) {
+				p.RemovePeer(peer)
+			}
 
-		if err := p.transport.SetPeers(p.me, peer, p.peers); errors.Is(err, ErrDown) {
-			p.RemovePeer(peer)
+			if err := p.transport.SetPeers(p.me, peer, p.peers); errors.Is(err, ErrDown) {
+				p.RemovePeer(peer)
+			}
 		}
 	}
 }
@@ -139,14 +142,25 @@ func (p *Peer) GetPeersMap() map[string]struct{} {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 
-	return p.peers.Val
+	m := make(map[string]struct{}, len(p.peers.Val))
+	for addr := range p.peers.Val {
+		m[addr] = struct{}{}
+	}
+
+	return m
 }
 
 func (p *Peer) GetPeersList() []string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
+	return p.getPeersList()
+}
 
-	return lo.Keys(p.peers.Val)
+func (p *Peer) getPeersList() []string {
+	list := lo.Keys(p.peers.Val)
+	slices.Sort(list)
+
+	return list
 }
 
 func (p *Peer) GetSheepsTime() time.Time {
@@ -167,7 +181,10 @@ type Gossip[T any] struct {
 }
 
 func (p *Peer) getRandomPeer() string {
-	for addr := range p.peers.Val {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+
+	for _, addr := range lo.Shuffle(p.getPeersList()) {
 		if addr != p.me {
 			return addr
 		}
