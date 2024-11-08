@@ -2,6 +2,7 @@ package peer
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -11,10 +12,15 @@ import (
 	"time"
 )
 
+// TODO: we need reverce gossip mechanism: if p1 gossips to p2 and it appears
+// that p2 has newer gossip it must return it to p1.
+
 var ErrDown = fmt.Errorf("node is down")
 
 type Peer struct {
-	me string
+	me     string
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	mu        sync.RWMutex
 	sheeps    Gossip[int]
@@ -22,9 +28,12 @@ type Peer struct {
 	transport transport
 }
 
-func New(addr string, transport transport) *Peer {
+func New(ctx context.Context, addr string, transport transport) *Peer {
+	ctx, cancel := context.WithCancel(ctx)
 	return &Peer{
 		me:        addr,
+		ctx:       ctx,
+		cancel:    cancel,
 		transport: transport,
 		peers:     Gossip[[]string]{Val: []string{addr}},
 	}
@@ -36,7 +45,14 @@ type transport interface {
 }
 
 func (p *Peer) Launch(interval time.Duration) {
-	for range time.Tick(interval) {
+	t := time.NewTicker(interval)
+	defer t.Stop()
+
+	for range t.C {
+		if p.ctx.Err() != nil {
+			return
+		}
+
 		peer := p.peers.Val[rand.Intn(len(p.peers.Val))]
 		if peer == p.me {
 			continue
@@ -50,6 +66,10 @@ func (p *Peer) Launch(interval time.Duration) {
 			p.RemovePeer(peer)
 		}
 	}
+}
+
+func (p *Peer) Stop() {
+	p.cancel()
 }
 
 func (p *Peer) Addr() string {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/tymbaca/study/gossip/peer"
 )
@@ -20,14 +22,14 @@ func choosePeer() *peer.Peer {
 	return nil
 }
 
-func SpawnPeer() {
+func SpawnPeer(ctx context.Context) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	spawnPeer()
+	spawnPeer(ctx)
 }
 
-func spawnPeer() {
+func spawnPeer(ctx context.Context) {
 	// newPeer := gofakeit.UUID()
 	newAddr := gofakeit.Name()
 
@@ -36,7 +38,7 @@ func spawnPeer() {
 		randomPeer.AddPeer(newAddr)
 	}
 
-	newPeer := peer.New(newAddr, &mapTransport{})
+	newPeer := peer.New(ctx, newAddr, &mapTransport{})
 	peers[newAddr] = newPeer
 	go newPeer.Launch(_updateInterval)
 }
@@ -49,8 +51,9 @@ func RemovePeer() {
 }
 
 func removePeer() {
-	for addr := range peers {
+	for addr, peer := range peers {
 		delete(peers, addr)
+		peer.Stop()
 		break
 	}
 }
