@@ -22,7 +22,8 @@ var (
 const (
 	_nodeRadius     = 20
 	_textSize       = 20
-	_captionSize    = 8
+	_addrSize       = 8
+	_infoSize       = 6
 	_updateInterval = 300 * time.Millisecond
 )
 

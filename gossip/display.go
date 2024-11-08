@@ -5,6 +5,7 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -13,12 +14,14 @@ import (
 
 func drawNodes(allPeers map[string]*peer.Peer, addrs []string, positions []Vector2) {
 	for i, addr := range addrs {
-		peer := peers[addr]
+		peer := allPeers[addr]
 		pos := positions[i]
 
 		rl.DrawCircleV(rl.Vector2(pos), _nodeRadius, getColor(peer))
 		rl.DrawText(strconv.Itoa(peer.GetSheeps()), int32(pos.X)-10, int32(pos.Y-10), _textSize, rl.Black)
-		rl.DrawText(addr, int32(pos.X)+10, int32(pos.Y+20), _captionSize, rl.DarkGreen)
+		hisPeers := peer.GetPeers()
+		rl.DrawText(addr, int32(pos.X)+10, int32(pos.Y+20), _addrSize, rl.DarkGreen)
+		rl.DrawText(strings.Join(hisPeers, "\n"), int32(pos.X)+10, int32(pos.Y+25+_addrSize), _infoSize, rl.DarkBrown)
 	}
 }
 
